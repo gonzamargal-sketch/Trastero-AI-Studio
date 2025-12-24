@@ -18,11 +18,11 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
     .sort((a, b) => new Date(a.reminderDate!).getTime() - new Date(b.reminderDate!).getTime());
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-50 safe-top safe-bottom">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-white border-b border-slate-200 shadow-sm z-30">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
+      {/* Header con soporte para Safe Areas */}
+      <header className="flex items-center justify-between px-4 md:px-6 pt-10 pb-3 md:py-4 bg-white border-b border-slate-200 shadow-sm z-30 safe-top">
         <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 md:p-2 rounded-lg">
+          <div className="bg-indigo-600 p-1.5 md:p-2 rounded-lg shadow-sm">
             <Box className="text-white w-5 h-5 md:w-6 md:h-6" />
           </div>
           <h1 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
@@ -34,18 +34,18 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
           <div className="relative">
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-all relative"
+              className="p-2.5 text-slate-500 hover:bg-slate-50 rounded-full transition-all relative"
             >
               <Bell size={22} />
               {reminders.length > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
+                <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full font-bold border-2 border-white">
                   {reminders.length}
                 </span>
               )}
             </button>
 
             {showNotifications && (
-              <div className="fixed inset-x-4 md:absolute md:inset-auto md:right-0 mt-2 md:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in slide-in-from-top-2">
+              <div className="fixed inset-x-4 md:absolute md:inset-auto md:right-0 mt-3 md:w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in slide-in-from-top-4">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-bold text-slate-900 flex items-center gap-2">
                     <Bell size={18} className="text-indigo-600" /> Recordatorios
@@ -75,10 +75,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
 
           <button 
             onClick={onAddItem}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white p-2 md:px-4 md:py-2 rounded-full font-medium transition-all shadow-md active:scale-95"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-full font-bold transition-all shadow-md active:scale-95 text-sm"
           >
             <PlusCircle size={20} />
-            <span className="hidden md:inline">Añadir Objeto</span>
+            <span className="hidden xs:inline">Añadir</span>
           </button>
         </div>
       </header>
@@ -121,12 +121,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-auto relative bg-slate-50 pb-20 md:pb-0" onClick={() => setShowNotifications(false)}>
+        <main className="flex-1 overflow-auto relative bg-slate-50 pb-20 md:pb-0" onClick={() => { if(showNotifications) setShowNotifications(false); }}>
           {children}
         </main>
 
-        {/* Bottom Nav for Mobile */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 flex justify-around items-center z-40 pb-safe">
+        {/* Bottom Nav for Mobile con soporte para Safe Areas */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 pt-2 pb-6 flex justify-around items-center z-40 safe-bottom">
           <MobileNavItem icon={<LayoutDashboard size={20} />} active={activeView === 'inventory'} onClick={() => setActiveView('inventory')} />
           <MobileNavItem icon={<Tags size={20} />} active={activeView === 'categories'} onClick={() => setActiveView('categories')} />
           <MobileNavItem icon={<Package size={24} />} active={activeView === 'planner'} onClick={() => setActiveView('planner')} highlight />
