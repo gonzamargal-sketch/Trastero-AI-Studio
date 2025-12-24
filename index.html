@@ -16,31 +16,65 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
-        overscroll-behavior-y: none;
+        margin: 0;
+        overflow: hidden;
       }
-      canvas {
-        touch-action: none;
+      #root {
+        height: 100vh;
+        width: 100vw;
       }
-      /* Prevenir scroll elástico en iOS */
-      .safe-top { padding-top: env(safe-area-inset-top); }
-      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      .initial-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #f8fafc;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e2e8f0;
+        border-top: 4px solid #4f46e5;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .loader-text {
+        color: #64748b;
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: -0.01em;
+      }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.460.0",
+    "three": "https://esm.sh/three@0.170.0",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@9.117.3",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@8.17.10",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "three": "https://esm.sh/three@^0.182.0",
-    "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
-    "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.4.2"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-</head>
+    <script type="module" src="index.tsx"></script>
+  </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="initial-loader">
+        <div class="spinner"></div>
+        <div class="loader-text">Cargando SmartStorage 3D...</div>
+      </div>
+    </div>
   </body>
 </html>

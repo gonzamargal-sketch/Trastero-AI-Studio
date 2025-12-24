@@ -5,25 +5,18 @@ import App from './App';
 
 // Registro del Service Worker para PWA
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(registration => {
-        console.log('SW registrado con éxito:', registration.scope);
-      })
-      .catch(error => {
-        console.log('Fallo en el registro del SW:', error);
-      });
-  });
+  navigator.serviceWorker.register('./sw.js', { scope: './' })
+    .catch(error => {
+      console.error('Fallo en el registro del SW:', error);
+    });
 }
 
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
