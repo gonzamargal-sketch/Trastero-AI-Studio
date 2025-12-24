@@ -1,7 +1,6 @@
 
-const CACHE_NAME = 'smartstorage-v2';
+const CACHE_NAME = 'smartstorage-v3';
 const ASSETS_TO_CACHE = [
-  './',
   './index.html',
   './manifest.json'
 ];
@@ -12,6 +11,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -22,24 +22,24 @@ self.addEventListener('activate', (event) => {
       }));
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Solo interceptar peticiones GET
   if (event.request.method !== 'GET') return;
   
-  // Evitar interceptar llamadas a la API de Google
-  if (event.request.url.includes('generativelanguage.googleapis.com')) return;
+  // No interceptar llamadas a la API o módulos externos para evitar problemas de CORS/versión
+  if (event.request.url.includes('generativelanguage.googleapis.com') || 
+      event.request.url.includes('esm.sh')) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).then((response) => {
-        // No cachear peticiones de terceros pesadas para no bloquear
-        return response;
-      }).catch(() => {
+      return fetch(event.request).catch(() => {
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
