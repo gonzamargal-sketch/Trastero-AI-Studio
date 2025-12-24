@@ -3,7 +3,7 @@
   "name": "SmartStorage 3D",
   "short_name": "Storage3D",
   "description": "Gestión de inventario 3D con optimización por IA",
-  "start_url": "./index.html",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#4f46e5",

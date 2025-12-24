@@ -5,10 +5,10 @@ import App from './App';
 
 console.log('SmartStorage 3D: Iniciando carga de módulos...');
 
-// Registro del Service Worker para PWA mejorado
+// Registro del Service Worker para PWA (Ruta absoluta para evitar 404 en subrutas)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then(reg => console.log('SmartStorage 3D: SW listo.', reg.scope))
       .catch(err => console.warn('SmartStorage 3D: SW no disponible.', err));
   });

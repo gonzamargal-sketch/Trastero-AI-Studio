@@ -1,8 +1,9 @@
 
-const CACHE_NAME = 'smartstorage-v3';
+const CACHE_NAME = 'smartstorage-v4';
 const ASSETS_TO_CACHE = [
-  './index.html',
-  './manifest.json'
+  '/',
+  '/index.html',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,9 +29,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
-  // No interceptar llamadas a la API o módulos externos para evitar problemas de CORS/versión
-  if (event.request.url.includes('generativelanguage.googleapis.com') || 
-      event.request.url.includes('esm.sh')) {
+  const url = new URL(event.request.url);
+
+  // No interceptar llamadas a la API de Google
+  if (url.hostname.includes('generativelanguage.googleapis.com') || url.hostname.includes('esm.sh')) {
     return;
   }
 
@@ -39,9 +41,14 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).catch(() => {
+
+      return fetch(event.request).then((response) => {
+        // Opcionalmente cachear nuevos recursos estáticos aquí
+        return response;
+      }).catch(() => {
+        // Si falla la red y es una navegación, devolver el index.html de la caché
         if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
+          return caches.match('/');
         }
       });
     })
