@@ -1,0 +1,7 @@
+{
+  "name": "SmartStorage 3D",
+  "description": "A high-end storage inventory manager with 3D space visualization and Gemini-powered space optimization.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
