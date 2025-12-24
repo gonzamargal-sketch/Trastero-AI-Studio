@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
 import InventoryList from './components/InventoryList';
 import ThreeDPlanner from './components/ThreeDPlanner';
@@ -8,29 +8,71 @@ import StorageSettings from './components/StorageSettings';
 import { AppView, StorageItem, StorageRoom, OptimizationSuggestion, StorageZone, Position } from './types';
 import { INITIAL_ITEMS, DEFAULT_ROOM, CATEGORIES as INITIAL_CATEGORIES, COLORS } from './constants';
 import { getSpaceOptimization } from './services/gemini';
-import { Sparkles, Loader2, ArrowRight, Tags, Plus, Trash2, Box, Bell, ChevronLeft, Move, Check, Ruler, Layers, MapPin, Info } from 'lucide-react';
+// Added missing 'X' icon import
+import { Sparkles, Loader2, ArrowRight, Tags, Plus, Trash2, Box, Bell, ChevronLeft, Move, Check, Ruler, Layers, MapPin, Info, RefreshCw, X } from 'lucide-react';
 
 const INITIAL_ZONES: StorageZone[] = [
   { id: 'z1', name: 'Estantería Principal', dimensions: { width: 120, height: 180, depth: 40 }, position: { x: -80, y: 90, z: -100 }, color: COLORS[3], shelves: 3, shelfHeights: [60, 60, 60] },
   { id: 'z2', name: 'Estantería Alta', dimensions: { width: 100, height: 220, depth: 50 }, position: { x: 50, y: 110, z: 50 }, color: COLORS[2], shelves: 4, shelfHeights: [80, 50, 50, 40] }
 ];
 
+const STORAGE_KEYS = {
+  ITEMS: 'smartstorage_items',
+  ZONES: 'smartstorage_zones',
+  ROOM: 'smartstorage_room',
+  CATEGORIES: 'smartstorage_categories'
+};
+
 const App: React.FC = () => {
+  // --- Estados principales con carga desde LocalStorage ---
+  const [items, setItems] = useState<StorageItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ITEMS);
+    return saved ? JSON.parse(saved) : INITIAL_ITEMS;
+  });
+
+  const [categories, setCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+
+  const [zones, setZones] = useState<StorageZone[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ZONES);
+    return saved ? JSON.parse(saved) : INITIAL_ZONES;
+  });
+
+  const [room, setRoom] = useState<StorageRoom>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ROOM);
+    return saved ? JSON.parse(saved) : DEFAULT_ROOM;
+  });
+
+  // --- Estados de UI ---
   const [view, setView] = useState<AppView>('inventory');
-  const [items, setItems] = useState<StorageItem[]>(INITIAL_ITEMS);
-  const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
-  const [zones, setZones] = useState<StorageZone[]>(INITIAL_ZONES);
-  const [room, setRoom] = useState<StorageRoom>(DEFAULT_ROOM);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StorageItem | undefined>();
-  
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
-  
   const [newCatName, setNewCatName] = useState('');
   const [optimizing, setOptimizing] = useState(false);
   const [suggestions, setSuggestions] = useState<(OptimizationSuggestion & { targetZoneId?: string })[]>([]);
 
+  // --- Efectos de Guardado Automático ---
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
+  }, [items]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ZONES, JSON.stringify(zones));
+  }, [zones]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ROOM, JSON.stringify(room));
+  }, [room]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+  }, [categories]);
+
+  // --- Handlers ---
   const handleSaveItem = (itemData: Partial<StorageItem>) => {
     if (editingItem) {
       setItems(prev => prev.map(item => item.id === editingItem.id ? { ...item, ...itemData } as StorageItem : item));
@@ -66,6 +108,17 @@ const App: React.FC = () => {
     if (newCatName && !categories.includes(newCatName)) {
       setCategories([...categories, newCatName]);
       setNewCatName('');
+    }
+  };
+
+  const resetAllData = () => {
+    if (window.confirm('¿Estás seguro de que quieres borrar todos los datos y restaurar el ejemplo inicial?')) {
+      setItems(INITIAL_ITEMS);
+      setZones(INITIAL_ZONES);
+      setRoom(DEFAULT_ROOM);
+      setCategories(INITIAL_CATEGORIES);
+      localStorage.clear();
+      window.location.reload();
     }
   };
 
@@ -161,13 +214,29 @@ const App: React.FC = () => {
       )}
 
       {view === 'settings' && (
-        <StorageSettings 
-          room={room} 
-          onUpdateRoom={setRoom} 
-          zones={zones} 
-          onAddZone={(z) => setZones([...zones, z])} 
-          onDeleteZone={(id) => setZones(zones.filter(z => z.id !== id))} 
-        />
+        <div className="space-y-8">
+          <StorageSettings 
+            room={room} 
+            onUpdateRoom={setRoom} 
+            zones={zones} 
+            onAddZone={(z) => setZones([...zones, z])} 
+            onDeleteZone={(id) => setZones(zones.filter(z => z.id !== id))} 
+          />
+          <div className="max-w-5xl mx-auto px-4 md:px-8 pb-12">
+            <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h4 className="text-red-800 font-bold">Zona de Peligro</h4>
+                <p className="text-red-600 text-sm">Esto borrará permanentemente todo tu inventario actual.</p>
+              </div>
+              <button 
+                onClick={resetAllData}
+                className="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-700 transition-all active:scale-95"
+              >
+                <RefreshCw size={18} /> Restaurar Datos de Fábrica
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {view === 'planner' && (
@@ -200,7 +269,7 @@ const App: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-slate-900 text-lg">Información</h3>
                 <button onClick={clearSelection} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
-                  <ChevronLeft className="rotate-[-90deg] md:rotate-0" />
+                  <X size={20} />
                 </button>
               </div>
 
