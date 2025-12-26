@@ -35,7 +35,8 @@ const InventoryList: React.FC<InventoryListProps> = ({ items, categories, onEdit
       }, {} as Record<string, StorageItem[]>)
     : null;
 
-  const ItemCard = ({ item }: { item: StorageItem }) => {
+  // Added React.FC type to fix JSX key prop errors
+  const ItemCard: React.FC<{ item: StorageItem }> = ({ item }) => {
     const hasUpcomingReminder = item.reminderDate && new Date(item.reminderDate) >= new Date();
     
     return (
@@ -174,7 +175,8 @@ const InventoryList: React.FC<InventoryListProps> = ({ items, categories, onEdit
         </div>
       ) : groupByCategory && groupedItems ? (
         <div className="space-y-8">
-          {Object.entries(groupedItems).map(([category, catItems]) => (
+          {/* Added type assertion to Object.entries to fix 'unknown' type inference issues */}
+          {(Object.entries(groupedItems) as [string, StorageItem[]][]).map(([category, catItems]) => (
             <div key={category} className="space-y-4">
               <div className="flex items-center gap-3">
                 <h3 className="text-lg font-bold text-slate-800">{category}</h3>

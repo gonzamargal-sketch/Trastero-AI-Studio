@@ -6,11 +6,7 @@ import * as THREE from 'three';
 import { Move, MousePointer2, Box as BoxIcon, Layers } from 'lucide-react';
 import { StorageItem, StorageRoom, StorageZone, Position } from '../types';
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements extends ThreeElements {}
-  }
-}
+// Removed global JSX augmentation as it was shadowing standard HTML element types (div, span, etc.)
 
 interface ThreeDPlannerProps {
   room: StorageRoom;
@@ -88,7 +84,10 @@ const ItemBox: React.FC<{
   const boxContent = (
     <mesh 
       ref={meshRef}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onPointerDown={(e) => { 
+        e.stopPropagation(); 
+        onSelect(); 
+      }}
       onPointerOver={() => { if (editMode) document.body.style.cursor = 'grab'; }}
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
     >
@@ -109,6 +108,7 @@ const ItemBox: React.FC<{
       <TransformControls 
         position={[x / 100, y / 100, z / 100]}
         mode="translate"
+        size={0.8} // Ejes más grandes para móvil
         onMouseDown={() => setDragging(true)}
         onMouseUp={() => {
           setDragging(false);
@@ -166,7 +166,10 @@ const ZoneBox: React.FC<{
   const zoneContent = (
     <group 
       ref={groupRef}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onPointerDown={(e) => { 
+        e.stopPropagation(); 
+        onSelect(); 
+      }}
       onPointerOver={() => { if (editMode) document.body.style.cursor = 'grab'; }}
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
     >
@@ -192,6 +195,7 @@ const ZoneBox: React.FC<{
       <TransformControls 
         position={[x / 100, y / 100, z / 100]}
         mode="translate"
+        size={0.8} // Ejes más grandes para móvil
         onMouseDown={() => setDragging(true)}
         onMouseUp={() => {
           setDragging(false);
@@ -234,7 +238,7 @@ const RoomContainer: React.FC<{ room: StorageRoom }> = ({ room }) => {
         <Edges color="#94a3b8" opacity={0.4} />
       </mesh>
 
-      {/* PARED FRONTAL (Muy transparente para no bloquear vista) */}
+      {/* PARED FRONTAL */}
       <mesh position={[0, h / 2, d / 2]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[w, h]} />
         <meshStandardMaterial color="#cbd5e1" transparent opacity={0.02} side={THREE.DoubleSide} />
@@ -268,10 +272,26 @@ const ThreeDPlanner: React.FC<ThreeDPlannerProps> = ({
   const [isDragging, setIsDragging] = useState(false);
 
   return (
-    <div className="w-full h-full bg-slate-900 touch-none relative">
-      <Canvas shadows dpr={[1, 2]} onPointerMissed={() => { if (!isDragging) { onSelectItem(null); onSelectZone(null); } }}>
+    <div className="w-full h-full bg-slate-900 touch-none relative select-none">
+      <Canvas 
+        shadows 
+        dpr={[1, 2]} 
+        onPointerMissed={() => { 
+          if (!isDragging) { 
+            onSelectItem(null); 
+            onSelectZone(null); 
+          } 
+        }}
+        style={{ touchAction: 'none' }} // Crucial para móvil
+      >
         <PerspectiveCamera makeDefault position={[5, 5, 5]} fov={40} />
-        <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2.1} enabled={!isDragging} enableDamping />
+        <OrbitControls 
+          makeDefault 
+          minPolarAngle={0} 
+          maxPolarAngle={Math.PI / 2.1} 
+          enabled={!isDragging} 
+          enableDamping 
+        />
         
         <ambientLight intensity={0.6} />
         <pointLight position={[10, 10, 10]} intensity={1.5} castShadow />
