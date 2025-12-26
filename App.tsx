@@ -8,8 +8,7 @@ import StorageSettings from './components/StorageSettings';
 import { AppView, StorageItem, StorageRoom, OptimizationSuggestion, StorageZone, Position } from './types';
 import { INITIAL_ITEMS, DEFAULT_ROOM, CATEGORIES as INITIAL_CATEGORIES, COLORS } from './constants';
 import { getSpaceOptimization } from './services/gemini';
-// Added missing 'X' icon import
-import { Sparkles, Loader2, ArrowRight, Tags, Plus, Trash2, Box, Bell, ChevronLeft, Move, Check, Ruler, Layers, MapPin, Info, RefreshCw, X } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, Tags, Plus, Trash2, Box, Bell, ChevronLeft, Move, Check, Ruler, Layers, MapPin, Info, RefreshCw, X, Download, Upload } from 'lucide-react';
 
 const INITIAL_ZONES: StorageZone[] = [
   { id: 'z1', name: 'Estantería Principal', dimensions: { width: 120, height: 180, depth: 40 }, position: { x: -80, y: 90, z: -100 }, color: COLORS[3], shelves: 3, shelfHeights: [60, 60, 60] },
@@ -20,11 +19,11 @@ const STORAGE_KEYS = {
   ITEMS: 'smartstorage_items',
   ZONES: 'smartstorage_zones',
   ROOM: 'smartstorage_room',
-  CATEGORIES: 'smartstorage_categories'
+  CATEGORIES: 'smartstorage_categories',
+  LAST_VIEW: 'smartstorage_last_view'
 };
 
 const App: React.FC = () => {
-  // --- Estados principales con carga desde LocalStorage ---
   const [items, setItems] = useState<StorageItem[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.ITEMS);
     return saved ? JSON.parse(saved) : INITIAL_ITEMS;
@@ -45,8 +44,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : DEFAULT_ROOM;
   });
 
-  // --- Estados de UI ---
-  const [view, setView] = useState<AppView>('inventory');
+  const [view, setView] = useState<AppView>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.LAST_VIEW);
+    return (saved as AppView) || 'inventory';
+  });
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StorageItem | undefined>();
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -55,24 +57,14 @@ const App: React.FC = () => {
   const [optimizing, setOptimizing] = useState(false);
   const [suggestions, setSuggestions] = useState<(OptimizationSuggestion & { targetZoneId?: string })[]>([]);
 
-  // --- Efectos de Guardado Automático ---
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
-  }, [items]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ZONES, JSON.stringify(zones));
-  }, [zones]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ROOM, JSON.stringify(room));
-  }, [room]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-  }, [categories]);
+    localStorage.setItem(STORAGE_KEYS.LAST_VIEW, view);
+  }, [items, zones, room, categories, view]);
 
-  // --- Handlers ---
   const handleSaveItem = (itemData: Partial<StorageItem>) => {
     if (editingItem) {
       setItems(prev => prev.map(item => item.id === editingItem.id ? { ...item, ...itemData } as StorageItem : item));
@@ -95,65 +87,35 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateItemPosition = (id: string, pos: Position) => {
-    setItems(prev => prev.map(item => item.id === id ? { ...item, position: pos } : item));
+  const handleExportData = () => {
+    const data = { items, zones, room, categories, version: '2.0' };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `smartstorage_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
   };
 
-  const handleUpdateZonePosition = (id: string, pos: Position) => {
-    setZones(prev => prev.map(zone => zone.id === id ? { ...zone, position: pos } : zone));
-  };
-
-  const handleAddCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newCatName && !categories.includes(newCatName)) {
-      setCategories([...categories, newCatName]);
-      setNewCatName('');
-    }
-  };
-
-  const resetAllData = () => {
-    if (window.confirm('¿Estás seguro de que quieres borrar todos los datos y restaurar el ejemplo inicial?')) {
-      setItems(INITIAL_ITEMS);
-      setZones(INITIAL_ZONES);
-      setRoom(DEFAULT_ROOM);
-      setCategories(INITIAL_CATEGORIES);
-      localStorage.clear();
-      window.location.reload();
-    }
-  };
-
-  const handleOptimize = async () => {
-    setOptimizing(true);
-    try {
-      const result = await getSpaceOptimization(room, items, zones);
-      setSuggestions(result);
-      setView('ai-insights');
-    } catch (error) {
-      console.error("Optimization failed", error);
-    } finally {
-      setOptimizing(false);
-    }
-  };
-
-  const applyOptimization = () => {
-    setItems(prev => prev.map(item => {
-      const suggestion = suggestions.find(s => s.itemId === item.id);
-      if (suggestion) {
-        return { 
-          ...item, 
-          position: suggestion.suggestedPosition,
-          location: suggestion.targetZoneId || item.location
-        };
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.items && data.zones) {
+          setItems(data.items);
+          setZones(data.zones);
+          setRoom(data.room || DEFAULT_ROOM);
+          setCategories(data.categories || INITIAL_CATEGORIES);
+          alert('Inventario importado con éxito.');
+        }
+      } catch (err) {
+        alert('Error al importar: El archivo no es válido.');
       }
-      return item;
-    }));
-    setView('planner');
-    setSuggestions([]);
-  };
-
-  const clearSelection = () => {
-    setSelectedItemId(null);
-    setSelectedZoneId(null);
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -180,7 +142,13 @@ const App: React.FC = () => {
             </h2>
             <p className="text-slate-500 mb-6 text-sm">Organiza tus objetos por tipos personalizados.</p>
 
-            <form onSubmit={handleAddCategory} className="flex gap-2 mb-8">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (newCatName && !categories.includes(newCatName)) {
+                setCategories([...categories, newCatName]);
+                setNewCatName('');
+              }
+            }} className="flex gap-2 mb-8">
               <input 
                 type="text" 
                 placeholder="Nueva categoría..."
@@ -203,7 +171,7 @@ const App: React.FC = () => {
                     <Box size={18} className="text-indigo-400" />
                     <span className="font-semibold text-slate-700">{cat}</span>
                   </div>
-                  <button onClick={() => setCategories(categories.filter(c => c !== cat))} className="p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                  <button onClick={() => setCategories(categories.filter(c => c !== cat))} className="p-2 text-slate-300 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                     <Trash2 size={18} />
                   </button>
                 </div>
@@ -222,20 +190,47 @@ const App: React.FC = () => {
             onAddZone={(z) => setZones([...zones, z])} 
             onDeleteZone={(id) => setZones(zones.filter(z => z.id !== id))} 
           />
-          <div className="max-w-5xl mx-auto px-4 md:px-8 pb-12">
+          
+          <div className="max-w-5xl mx-auto px-4 md:px-8 space-y-4">
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <RefreshCw className="text-indigo-600" size={20} /> Portabilidad de Datos
+              </h3>
+              <p className="text-sm text-slate-500 mb-6 italic">Usa estas opciones para mover tu inventario entre el ordenador y el móvil.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button 
+                  onClick={handleExportData}
+                  className="flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-4 rounded-2xl font-bold hover:bg-black transition-all active:scale-95"
+                >
+                  <Download size={20} /> Exportar Inventario
+                </button>
+                <label className="flex items-center justify-center gap-2 bg-white border-2 border-slate-200 text-slate-700 px-6 py-4 rounded-2xl font-bold hover:bg-slate-50 cursor-pointer transition-all active:scale-95">
+                  <Upload size={20} /> Importar Archivo
+                  <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
+                </label>
+              </div>
+            </div>
+
             <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
+              <div className="text-center md:text-left">
                 <h4 className="text-red-800 font-bold">Zona de Peligro</h4>
                 <p className="text-red-600 text-sm">Esto borrará permanentemente todo tu inventario actual.</p>
               </div>
               <button 
-                onClick={resetAllData}
-                className="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-700 transition-all active:scale-95"
+                onClick={() => {
+                  if (window.confirm('¿Estás seguro de que quieres borrar todos los datos?')) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-700 transition-all active:scale-95 w-full md:w-auto justify-center"
               >
-                <RefreshCw size={18} /> Restaurar Datos de Fábrica
+                <Trash2 size={18} /> Restaurar Fábrica
               </button>
             </div>
           </div>
+          <div className="pb-12" />
         </div>
       )}
 
@@ -250,12 +245,23 @@ const App: React.FC = () => {
               selectedZoneId={selectedZoneId}
               onSelectItem={setSelectedItemId}
               onSelectZone={setSelectedZoneId}
-              onUpdateItemPosition={handleUpdateItemPosition}
-              onUpdateZonePosition={handleUpdateZonePosition}
+              onUpdateItemPosition={(id, pos) => setItems(prev => prev.map(item => item.id === id ? { ...item, position: pos } : item))}
+              onUpdateZonePosition={(id, pos) => setZones(prev => prev.map(zone => zone.id === id ? { ...zone, position: pos } : zone))}
             />
             
             <button 
-              onClick={handleOptimize}
+              onClick={async () => {
+                setOptimizing(true);
+                try {
+                  const result = await getSpaceOptimization(room, items, zones);
+                  setSuggestions(result);
+                  setView('ai-insights');
+                } catch (error) {
+                  console.error("Optimization failed", error);
+                } finally {
+                  setOptimizing(false);
+                }
+              }}
               disabled={optimizing}
               className="absolute top-4 right-4 bg-white/95 backdrop-blur hover:bg-white text-indigo-600 px-6 py-3 rounded-2xl shadow-2xl font-bold border border-indigo-100 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 z-10"
             >
@@ -268,7 +274,7 @@ const App: React.FC = () => {
             <div className="fixed inset-x-0 bottom-20 md:relative md:inset-auto md:w-80 bg-white border-t md:border-t-0 md:border-l border-slate-200 p-6 overflow-y-auto z-40 animate-in slide-in-from-right duration-300 md:h-full max-h-[60vh] md:max-h-none rounded-t-[2.5rem] md:rounded-none shadow-2xl md:shadow-none order-2">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-slate-900 text-lg">Información</h3>
-                <button onClick={clearSelection} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+                <button onClick={() => { setSelectedItemId(null); setSelectedZoneId(null); }} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
                   <X size={20} />
                 </button>
               </div>
@@ -302,10 +308,6 @@ const App: React.FC = () => {
                         <span className="block text-[8px] font-bold text-slate-400">FONDO</span>
                         <span className="text-xs font-mono font-bold">{item.dimensions.depth}</span>
                       </div>
-                    </div>
-                    <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex gap-3">
-                      <Info size={16} className="text-indigo-500 shrink-0" />
-                      <p className="text-[10px] text-indigo-700 leading-relaxed font-medium">Usa las flechas en el visor 3D para posicionar este objeto con precisión.</p>
                     </div>
                   </div>
                 );
@@ -347,37 +349,54 @@ const App: React.FC = () => {
           <div className="bg-white rounded-[2.5rem] shadow-2xl border border-indigo-100 overflow-hidden">
             <div className="bg-indigo-600 p-8 text-white relative">
               <Sparkles className="absolute right-8 top-8 opacity-20 w-16 h-16" />
-              <h2 className="text-3xl font-bold mb-2">Reorganización Inteligente</h2>
-              <p className="text-indigo-100 text-lg">Cálculo completado. ¿Deseas aplicar el nuevo plano?</p>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Reorganización Inteligente</h2>
+              <p className="text-indigo-100 text-sm md:text-lg">Cálculo completado. ¿Deseas aplicar el nuevo plano?</p>
             </div>
             
-            <div className="p-8">
-              <div className="space-y-4 mb-8 max-h-[45vh] overflow-y-auto pr-4 custom-scrollbar">
+            <div className="p-6 md:p-8">
+              <div className="space-y-4 mb-8 max-h-[45vh] overflow-y-auto pr-2 custom-scrollbar">
                 {suggestions.map((s, idx) => {
                   const item = items.find(i => i.id === s.itemId);
                   const targetZone = zones.find(z => z.id === s.targetZoneId);
                   return (
                     <div key={idx} className="flex items-start gap-4 p-5 rounded-3xl bg-slate-50 border border-slate-200">
-                      <div className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center" style={{ backgroundColor: `${item?.color}20` }}>
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl shrink-0 flex items-center justify-center" style={{ backgroundColor: `${item?.color}20` }}>
                          <Box style={{ color: item?.color }} size={24} />
                       </div>
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <h4 className="font-bold text-slate-800">{item?.name}</h4>
+                          <h4 className="font-bold text-slate-800 text-sm md:text-base">{item?.name}</h4>
                           <ArrowRight size={14} className="text-slate-400" />
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 uppercase tracking-tighter">
                             {targetZone ? targetZone.name : 'Suelo'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 italic leading-relaxed">"{s.reasoning}"</p>
+                        <p className="text-[11px] md:text-xs text-slate-600 italic leading-relaxed">"{s.reasoning}"</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
               
-              <div className="flex gap-4">
-                <button onClick={applyOptimization} className="flex-1 bg-indigo-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-3">
+              <div className="flex flex-col md:flex-row gap-4">
+                <button 
+                  onClick={() => {
+                    setItems(prev => prev.map(item => {
+                      const suggestion = suggestions.find(s => s.itemId === item.id);
+                      if (suggestion) {
+                        return { 
+                          ...item, 
+                          position: suggestion.suggestedPosition,
+                          location: suggestion.targetZoneId || item.location
+                        };
+                      }
+                      return item;
+                    }));
+                    setView('planner');
+                    setSuggestions([]);
+                  }} 
+                  className="flex-1 bg-indigo-600 text-white py-5 rounded-2xl font-bold shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
                   <Check size={20} /> Aplicar Cambios
                 </button>
                 <button onClick={() => setView('planner')} className="px-8 py-5 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancelar</button>
